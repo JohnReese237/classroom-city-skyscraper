@@ -1,0 +1,1504 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>课堂摩天楼 - 终极拟真版</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: #0f172a; display: flex; justify-content: center; align-items: center; height: 100vh; width: 100vw; color: white; overflow: hidden; }
+        button, select, textarea, input { font: inherit; }
+        button, select { cursor: pointer; }
+
+        #game-container {
+            width: 99.5vw; height: 99vh; max-width: 1920px; max-height: 1080px;
+            background-color: #1e293b; display: flex; flex-direction: column;
+            border-radius: 4px; overflow: hidden; box-shadow: 0 10px 40px rgba(0,0,0,0.8);
+        }
+
+        #top-bar {
+            height: 62px; flex: 0 0 62px; display: grid;
+            grid-template-columns: minmax(190px, 1fr) 128px minmax(260px, 1.25fr) minmax(360px, 1.2fr);
+            align-items: center; gap: 12px; padding: 8px 12px;
+            background: #111827; border-bottom: 3px solid #020617;
+        }
+        #game-title { font-size: clamp(18px, 1.7vw, 28px); font-weight: 900; color: #fef08a; letter-spacing: 1px; text-shadow: 2px 2px 0 #000; white-space: nowrap; }
+        #countdown { justify-self: center; min-width: 112px; text-align: center; padding: 8px 12px; background: #0f172a; border: 1px solid #475569; border-radius: 8px; font-size: 28px; line-height: 1; font-weight: 900; color: #f8fafc; }
+        #countdown.warning { color: #fecaca; border-color: #ef4444; box-shadow: inset 0 0 14px rgba(239,68,68,0.35); }
+        #top-volume { display: grid; grid-template-columns: 74px 1fr 54px; align-items: center; gap: 10px; min-width: 0; }
+        .top-label { color: #bfdbfe; font-size: 13px; font-weight: 800; letter-spacing: 1px; white-space: nowrap; }
+        #volume-track { height: 18px; border: 2px solid #334155; border-radius: 8px; overflow: hidden; background: linear-gradient(to right, #1f2937 40%, #3f3414 70%, #3a1519 100%); }
+        #volume-fill { width: 0%; height: 100%; background: linear-gradient(to right, #22c55e, #facc15, #ef4444); transition: width 0.08s linear; }
+        #volume-value { color: #e2e8f0; font-weight: 900; text-align: right; font-variant-numeric: tabular-nums; }
+        #top-actions { justify-self: end; display: flex; align-items: center; gap: 8px; min-width: 0; }
+        .top-btn, #round-duration-chip {
+            height: 40px; border: 1px solid #475569; border-radius: 8px; background: #0f172a;
+            color: #e5e7eb; padding: 0 12px; font-weight: 800;
+        }
+        .top-btn:hover { border-color: #93c5fd; background: #172554; }
+        #round-duration-chip {
+            min-width: 112px; display: flex; align-items: center; justify-content: center;
+            color: #bfdbfe; border-style: dashed;
+        }
+
+        #game-main { flex: 1; min-height: 0; display: flex; }
+        #center-panel {
+            width: 70%; background: linear-gradient(to bottom, #4299e1, #90cdf4 50%, #e2e8f0);
+            position: relative; border-right: 4px solid #1a202c; overflow: hidden;
+        }
+        #game-canvas { display: block; width: 100%; height: 100%; }
+
+        #hud-altitude {
+            position: absolute; bottom: 20px; left: 20px; background: rgba(26, 32, 44, 0.85);
+            border-radius: 8px; padding: 12px; border: 2px solid #4a5568;
+            display: flex; flex-direction: column; align-items: center; z-index: 5;
+        }
+        #floor-number { font-size: 38px; font-weight: 900; color: #ecc94b; text-shadow: 2px 2px 0 #000; line-height: 1; }
+        .floor-label { font-size: 12px; color: #a0aec0; font-weight: bold; margin-bottom: 8px; letter-spacing: 1px; }
+        #altitude-line { width: 6px; height: 100px; background: linear-gradient(to top, #718096, #ecc94b); border-radius: 3px; position: relative; margin-top: 5px; }
+        .tick { width: 16px; height: 2px; background: #fff; position: absolute; left: -5px; }
+        #weather-icon { font-size: 22px; margin-top: 15px; font-weight: 900; color: #fef08a; text-shadow: 0 0 10px rgba(255,255,255,0.5); }
+
+        #right-panel { width: 30%; background-color: #1e293b; padding: 16px 14px; display: flex; flex-direction: column; justify-content: space-between; gap: 14px; }
+        #word-display-area {
+            flex: 1; background-color: #0f172a; border: 3px solid #3b82f6; border-radius: 8px;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            padding: 18px; text-align: center; box-shadow: inset 0 0 20px rgba(0,0,0,0.5); overflow: hidden;
+        }
+        .word-label { font-size: 16px; color: #93c5fd; font-weight: bold; margin-bottom: 15px; letter-spacing: 1px; }
+        #current-word {
+            font-weight: 900; color: #fef08a; text-shadow: 3px 3px 6px rgba(0,0,0,0.6);
+            line-height: 1.1; margin-bottom: 25px; width: 100%; transition: font-size 0.2s;
+            word-wrap: break-word; overflow-wrap: break-word;
+        }
+        #pronounce-status { font-size: clamp(16px, 1.5vw, 22px); font-weight: bold; color: #4ade80; background: rgba(0,0,0,0.3); padding: 8px 15px; border-radius: 8px; }
+        .controls-wrapper { display: flex; flex-direction: column; gap: 14px; }
+        #btn-simulate-voice {
+            background: linear-gradient(to right, #22c55e 0%, #22c55e var(--voice-fill, 0%), #1e3a8a var(--voice-fill, 0%), #1e40af 100%);
+            color: white; border: none; padding: 12px; font-size: 16px; font-weight: bold; border-radius: 8px; transition: 0.16s;
+        }
+        #btn-simulate-voice.listening { box-shadow: inset 0 0 0 2px rgba(255,255,255,0.08); }
+        #btn-simulate-voice.success { background: linear-gradient(to right, #16a34a, #22c55e); }
+        #btn-simulate-voice.off { background: #475569; }
+        #btn-release { background-color: #22c55e; color: white; border: none; padding: 18px; font-size: 22px; font-weight: bold; border-radius: 8px; transition: 0.2s; opacity: 0.5; box-shadow: 0 5px 0 #166534; }
+        #btn-release.active { opacity: 1; animation: pulse 1.5s infinite; }
+        #btn-release.active:active { transform: translateY(5px); box-shadow: none; }
+        #stats-area { background-color: #0f172a; padding: 12px 20px; border-radius: 8px; display: flex; justify-content: space-between; gap: 14px; font-size: 18px; border: 1px solid #334155; }
+        .stat-value { font-weight: bold; color: #fef08a; }
+        #feedback-msg { position: absolute; top: 35%; left: 35%; transform: translate(-50%, -50%); font-size: 5vw; font-weight: 900; color: #fff; text-shadow: 4px 4px 0 #000; opacity: 0; pointer-events: none; transition: opacity 0.3s; z-index: 10; }
+
+        .modal-backdrop {
+            position: fixed; inset: 0; background: rgba(2, 6, 23, 0.72); display: none;
+            align-items: center; justify-content: center; z-index: 50; padding: 24px;
+        }
+        .modal-backdrop.visible { display: flex; }
+        .modal {
+            width: min(820px, 94vw); max-height: 88vh; overflow: auto;
+            background: #111827; border: 1px solid #475569; border-radius: 8px;
+            box-shadow: 0 18px 70px rgba(0,0,0,0.55); padding: 22px;
+        }
+        .modal.narrow { width: min(420px, 94vw); }
+        .modal h2 { font-size: 26px; margin-bottom: 18px; color: #fef08a; }
+        .settings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        .field { display: flex; flex-direction: column; gap: 8px; }
+        .field.full { grid-column: 1 / -1; }
+        .field label { color: #bfdbfe; font-weight: 800; }
+        .field textarea {
+            min-height: 142px; resize: vertical; background: #020617; color: #f8fafc;
+            border: 1px solid #475569; border-radius: 8px; padding: 10px; line-height: 1.45;
+        }
+        .field input[type="range"] { width: 100%; accent-color: #38bdf8; }
+        .field select { height: 38px; border-radius: 8px; border: 1px solid #475569; background: #020617; color: #f8fafc; padding: 0 10px; }
+        .inline-check { flex-direction: row; align-items: center; background: #020617; border: 1px solid #334155; padding: 10px; border-radius: 8px; }
+        .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px; }
+        .modal-btn { border: 1px solid #475569; border-radius: 8px; background: #0f172a; color: #e5e7eb; padding: 10px 14px; font-weight: 900; }
+        .modal-btn.primary { background: #2563eb; border-color: #60a5fa; }
+        .modal-btn.danger { background: #991b1b; border-color: #ef4444; }
+        #result-summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 12px; }
+        .result-tile { background: #020617; border: 1px solid #334155; border-radius: 8px; padding: 14px; text-align: center; }
+        .result-tile strong { display: block; color: #fef08a; font-size: 28px; margin-top: 4px; }
+
+        @media (max-width: 980px) {
+            #top-bar { grid-template-columns: 1fr 104px; height: auto; flex-basis: auto; }
+            #top-volume, #top-actions { grid-column: 1 / -1; width: 100%; }
+            #top-actions { justify-self: stretch; justify-content: space-between; }
+            #game-main { flex-direction: column; }
+            #center-panel, #right-panel { width: 100%; }
+            #center-panel { min-height: 58vh; border-right: none; border-bottom: 4px solid #1a202c; }
+            .settings-grid { grid-template-columns: 1fr; }
+        }
+
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.02); } 100% { transform: scale(1); } }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <div id="top-bar">
+        <div id="game-title">课堂摩天楼</div>
+        <div id="countdown">03:00</div>
+        <div id="top-volume">
+            <span class="top-label">环境音量</span>
+            <div id="volume-track"><div id="volume-fill"></div></div>
+            <span id="volume-value">0%</span>
+        </div>
+        <div id="top-actions">
+            <div id="round-duration-chip">3分钟</div>
+            <button class="top-btn" id="btn-settings">设置</button>
+            <button class="top-btn" id="btn-pause">暂停</button>
+        </div>
+    </div>
+
+    <div id="game-main">
+        <div id="center-panel">
+            <div id="hud-altitude">
+                <div class="floor-label">楼层</div>
+                <div id="floor-number">0</div>
+                <div id="altitude-line">
+                    <div class="tick" style="bottom: 0;"></div>
+                    <div class="tick" style="bottom: 33px;"></div>
+                    <div class="tick" style="bottom: 66px;"></div>
+                    <div class="tick" style="bottom: 100px;"></div>
+                </div>
+                <div id="weather-icon">晴</div>
+            </div>
+            <div id="feedback-msg">PERFECT!</div>
+            <canvas id="game-canvas"></canvas>
+        </div>
+
+        <div id="right-panel">
+            <div id="word-display-area">
+                <div class="word-label">- READ ALOUD -</div>
+                <div id="current-word">farmer</div>
+                <div id="pronounce-status">等待中...</div>
+            </div>
+            <div class="controls-wrapper">
+                <button id="btn-simulate-voice" class="listening">发音成功 0%</button>
+                <button id="btn-release" disabled>松开</button>
+                <div id="stats-area">
+                    <div>Score: <span id="score-val" class="stat-value">0</span></div>
+                    <div>Best: <span id="best-val" class="stat-value">0</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal-backdrop" id="settings-modal">
+    <div class="modal">
+        <h2>设置</h2>
+        <div class="settings-grid">
+            <div class="field">
+                <label for="word-bank-input">词库</label>
+                <textarea id="word-bank-input" spellcheck="false"></textarea>
+            </div>
+            <div class="field">
+                <label for="sentence-bank-input">句子库</label>
+                <textarea id="sentence-bank-input" spellcheck="false"></textarea>
+            </div>
+            <div class="field">
+                <label for="content-mode">朗读内容</label>
+                <select id="content-mode">
+                    <option value="mixed">词库 + 句子库</option>
+                    <option value="words">只用词库</option>
+                    <option value="sentences">只用句子库</option>
+                </select>
+            </div>
+            <div class="field">
+                <label for="round-duration-input">默认游戏时长</label>
+                <select id="round-duration-input">
+                    <option value="60">1分钟</option>
+                    <option value="120">2分钟</option>
+                    <option value="180" selected>3分钟</option>
+                    <option value="300">5分钟</option>
+                </select>
+            </div>
+            <div class="field inline-check">
+                <input type="checkbox" id="toggle-weather" checked>
+                <label for="toggle-weather">开启高空天气</label>
+            </div>
+            <div class="field inline-check">
+                <input type="checkbox" id="toggle-test-mode">
+                <label for="toggle-test-mode">测试模式：直接挂楼层</label>
+            </div>
+            <div class="field">
+                <label for="difficulty-input">难度：吊钩摆动幅度 <span id="difficulty-value">60%</span></label>
+                <input type="range" id="difficulty-input" min="35" max="100" value="60">
+            </div>
+            <div class="field">
+                <label for="mic-sensitivity-input">麦克风灵敏度 <span id="mic-sensitivity-value">84%</span></label>
+                <input type="range" id="mic-sensitivity-input" min="20" max="140" value="84">
+            </div>
+            <div class="field">
+                <label for="noise-safe-zone-input">噪音安全区 <span id="noise-safe-zone-value">46%</span></label>
+                <input type="range" id="noise-safe-zone-input" min="35" max="70" value="46">
+            </div>
+            <div class="field">
+                <label for="noise-impact-strength-input">噪音晃动增幅 <span id="noise-impact-strength-value">65%</span></label>
+                <input type="range" id="noise-impact-strength-input" min="30" max="140" value="65">
+            </div>
+            <div class="field full">
+                <label for="noise-response-speed-input">噪音反应速度 <span id="noise-response-speed-value">45%</span></label>
+                <input type="range" id="noise-response-speed-input" min="20" max="100" value="45">
+            </div>
+        </div>
+        <div class="modal-actions">
+            <button class="modal-btn" id="btn-reset-bank">恢复默认</button>
+            <button class="modal-btn" id="btn-close-settings">取消</button>
+            <button class="modal-btn primary" id="btn-save-settings">保存</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-backdrop" id="pause-modal">
+    <div class="modal narrow">
+        <h2>暂停</h2>
+        <div class="modal-actions">
+            <button class="modal-btn" id="btn-resume">继续</button>
+            <button class="modal-btn danger" id="btn-restart">重新开始</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-backdrop" id="result-modal">
+    <div class="modal narrow">
+        <h2>回合结算</h2>
+        <div id="result-summary">
+            <div class="result-tile">楼层<strong id="result-floor">0</strong></div>
+            <div class="result-tile">得分<strong id="result-score">0</strong></div>
+            <div class="result-tile">时长<strong id="result-duration">3分钟</strong></div>
+        </div>
+        <div class="modal-actions">
+            <button class="modal-btn primary" id="btn-result-restart">再来一局</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const canvas = document.getElementById('game-canvas');
+    const ctx = canvas.getContext('2d');
+
+    const defaultWords = ["farmer", "worker", "driver", "doctor", "nurse", "bus", "train", "plane", "car", "bike", "tree", "grass", "flower", "chicken", "cow", "sheep", "English", "Chinese", "music", "PE", "art", "run", "draw", "sing", "dance", "play football"];
+    const defaultSentences = ["I go to Beijing", "I go by bus", "This is my dad", "He is a worker", "we have some grass", "let's feed the cows.", "I have PE.", "I don't like it.", "You can do it.", "We can help.", "Let's go together.", "I can sing.", "I can dance.", "I like them all."];
+    const blockColors = ["#eab308", "#f97316", "#22c55e", "#06b6d4", "#8b5cf6", "#ec4899", "#84cc16", "#f43f5e", "#14b8a6", "#f59e0b", "#3b82f6", "#a855f7"];
+    const blockEmojis = ["😀", "😎", "🤩", "😊", "😄", "🥳", "🤓", "😺", "🚀", "⭐", "🌈", "🎈", "🏆", "🎵", "⚽", "🌻"];
+
+    const blockW = 120; const blockH = 85;
+    const cameraConfig = {
+        maxVisibleFloors: 2
+    };
+    const hookConfig = {
+        readyGap: 96,
+        readyLengthScale: 2 / 3,
+        minReadyLength: 110,
+        maxReadyLength: 520,
+        readyStretchScale: 0.18,
+        topInsetRatio: 0.105,
+        minTopInset: 46,
+        maxTopInset: 92,
+        baseLengthRatio: 0.18,
+        minBaseLength: 122,
+        maxBaseLength: 172,
+        readyGapRatio: 0.185,
+        minReadyGap: 138,
+        maxReadyGap: 196
+    };
+    const physics = {
+        weatherStartFloor: 10,
+        perfectWindowPx: 14,
+        rainPerfectPenaltyPx: 2,
+        stabilityMarginPx: 2,
+        rainStabilityMarginPx: 4,
+        maxLean: 0.12,
+        baseDamping: 0.92,
+        recenterStrength: 0.0035,
+        settleDecay: 0.9,
+        windResponse: 0.018,
+        maxTopOffsetRatio: 0.18,
+        maxBlockRotation: 0.09,
+        heightDifficultyPerFloor: 0.075,
+        weatherIntensityPerFloor: 0.028,
+        hookHeightAngleStep: 0.16,
+        hookHeightSpeedStep: 0.00048,
+        perfectHeightPenaltyPx: 0.32,
+        heightMarginStepPx: 1.15,
+        localHeightBiasPx: 3.4,
+        stackWeightGrowth: 0.95,
+        highRiseLeanBoost: 0.085,
+        highRiseWindBoost: 0.07,
+        voiceVolumeThreshold: 0.34,
+        voiceBaseHoldMs: 360,
+        voiceLetterHoldMs: 55,
+        voiceWordHoldMs: 150,
+        noiseSwingBoost: 0.2,
+        noiseSpeedBoost: 0.00075,
+        noiseSettleBoost: 0.0018,
+        noiseCalmThreshold: 0.44,
+        weatherMinDurationMs: 18000,
+        weatherDurationJitterMs: 4000
+    };
+    const storageKey = "classroomSkyscraperSettings";
+    let centerX, baseY;
+
+    let score = 0;
+    let bestScore = Number(localStorage.getItem("classroomSkyscraperBest") || 0);
+    let hookIsReady = false;
+    let gameState = "waiting";
+    let previousState = "waiting";
+    let shakeIntensity = 0;
+    let loadProgress = 0;
+    let loadStartedAt = 0;
+    let roundEnded = false;
+    let currentRoundDuration = 180;
+    let roundRemaining = currentRoundDuration;
+    let lastTimerTick = Date.now();
+
+    let hook = { x: 0, topY: -20, baseLength: 100, targetLength: 100, length: 100, maxStretch: 60, angle: 0, speed: 0.0012, maxAngle: 0.46, baseSpeed: 0.0012, baseMaxAngle: 0.46 };
+    let blocks = [];
+    let debris = [];
+    let fallingBlock = null;
+    let towerLean = 0;
+    let towerLeanVelocity = 0;
+    let settleEnergy = 0;
+    let windForce = 0;
+    let windTarget = 0;
+    let windPhase = Math.random() * Math.PI * 2;
+    let weather = { type: "none", intensity: 0, particles: [], until: 0, direction: 1 };
+    let currentSettings = loadSettings();
+    let currentPromptText = "";
+    let currentPromptPool = [];
+    let mic = { ctx: null, analyser: null, data: null, level: 0, holdProgressMs: 0, normalized: 0, noiseTarget: 0, noiseImpact: 0 };
+    let lastVoiceMeterAt = Date.now();
+    let noiseJudgingEnabled = false;
+    let audioCtx = null;
+
+    const uiWord = document.getElementById('current-word');
+    const uiStatus = document.getElementById('pronounce-status');
+    const btnSimulate = document.getElementById('btn-simulate-voice');
+    const btnRelease = document.getElementById('btn-release');
+    const uiFloor = document.getElementById('floor-number');
+    const uiWeatherIcon = document.getElementById('weather-icon');
+    const uiScore = document.getElementById('score-val');
+    const uiBest = document.getElementById('best-val');
+    const countdown = document.getElementById('countdown');
+    const roundDurationChip = document.getElementById('round-duration-chip');
+    const volumeFill = document.getElementById('volume-fill');
+    const volumeValue = document.getElementById('volume-value');
+    const settingsModal = document.getElementById('settings-modal');
+    const pauseModal = document.getElementById('pause-modal');
+    const resultModal = document.getElementById('result-modal');
+    const wordBankInput = document.getElementById('word-bank-input');
+    const sentenceBankInput = document.getElementById('sentence-bank-input');
+    const contentModeInput = document.getElementById('content-mode');
+    const roundDurationInput = document.getElementById('round-duration-input');
+    const toggleWeather = document.getElementById('toggle-weather');
+    const toggleTestMode = document.getElementById('toggle-test-mode');
+    const difficultyInput = document.getElementById('difficulty-input');
+    const difficultyValue = document.getElementById('difficulty-value');
+    const micSensitivityInput = document.getElementById('mic-sensitivity-input');
+    const micSensitivityValue = document.getElementById('mic-sensitivity-value');
+    const noiseSafeZoneInput = document.getElementById('noise-safe-zone-input');
+    const noiseSafeZoneValue = document.getElementById('noise-safe-zone-value');
+    const noiseImpactStrengthInput = document.getElementById('noise-impact-strength-input');
+    const noiseImpactStrengthValue = document.getElementById('noise-impact-strength-value');
+    const noiseResponseSpeedInput = document.getElementById('noise-response-speed-input');
+    const noiseResponseSpeedValue = document.getElementById('noise-response-speed-value');
+
+    function clampSetting(value, fallback, min, max) {
+        let numeric = Number(value);
+        if (!Number.isFinite(numeric)) return fallback;
+        return clamp(numeric, min, max);
+    }
+
+    function loadSettings() {
+        let fallback = {
+            words: defaultWords,
+            sentences: defaultSentences,
+            contentMode: "mixed",
+            roundDuration: 180,
+            difficulty: 60,
+            micSensitivity: 84,
+            noiseSafeZone: 46,
+            noiseImpactStrength: 65,
+            noiseResponseSpeed: 45,
+            testMode: false,
+            weatherEnabled: true
+        };
+        try {
+            let saved = JSON.parse(localStorage.getItem(storageKey) || "null");
+            if (!saved) return fallback;
+            let savedDifficulty = Number(saved.difficulty);
+            let savedDuration = Number(saved.roundDuration);
+            let savedMicSensitivity = Number(saved.micSensitivity);
+            return {
+                ...fallback,
+                ...saved,
+                difficulty: Number.isFinite(savedDifficulty) ? (savedDifficulty === 43 ? 60 : savedDifficulty) : fallback.difficulty,
+                roundDuration: Number.isFinite(savedDuration) ? (savedDuration === 120 ? 180 : savedDuration) : fallback.roundDuration,
+                micSensitivity: Number.isFinite(savedMicSensitivity)
+                    ? (savedMicSensitivity === 70 ? 84 : clampSetting(savedMicSensitivity, fallback.micSensitivity, 20, 140))
+                    : fallback.micSensitivity,
+                noiseSafeZone: clampSetting(saved.noiseSafeZone, fallback.noiseSafeZone, 35, 70),
+                noiseImpactStrength: clampSetting(saved.noiseImpactStrength, fallback.noiseImpactStrength, 30, 140),
+                noiseResponseSpeed: clampSetting(saved.noiseResponseSpeed, fallback.noiseResponseSpeed, 20, 100),
+                words: sanitizeList(saved.words, fallback.words),
+                sentences: sanitizeList(saved.sentences, fallback.sentences)
+            };
+        } catch {
+            return fallback;
+        }
+    }
+
+    function saveSettings() {
+        localStorage.setItem(storageKey, JSON.stringify(currentSettings));
+    }
+
+    function sanitizeList(value, fallback) {
+        if (!Array.isArray(value)) return [...fallback];
+        let cleaned = value.map(v => String(v).trim()).filter(Boolean);
+        return cleaned.length ? cleaned : [...fallback];
+    }
+
+    function parseBank(text) {
+        return text.split(/\r?\n|[，；;]/).map(item => item.trim()).filter(Boolean);
+    }
+
+    function normalizePromptText(text) {
+        return String(text || "")
+            .toLowerCase()
+            .replace(/['’]/g, "")
+            .replace(/[^a-z0-9\s]/g, " ")
+            .replace(/\s+/g, " ")
+            .trim();
+    }
+
+    function splitPromptTokens(text) {
+        let normalized = normalizePromptText(text);
+        return normalized ? normalized.split(" ") : [];
+    }
+
+    function getRequiredVoiceHoldMs() {
+        let normalized = normalizePromptText(currentPromptText);
+        if (!normalized) return physics.voiceBaseHoldMs;
+        let letters = normalized.replace(/\s/g, "").length;
+        let words = splitPromptTokens(normalized).length;
+        return physics.voiceBaseHoldMs
+            + letters * physics.voiceLetterHoldMs
+            + Math.max(0, words - 1) * physics.voiceWordHoldMs;
+    }
+
+    function resetVoiceAttempt() {
+        mic.holdProgressMs = 0;
+        mic.normalized = 0;
+    }
+
+    function resetNoiseImpact(immediate = true) {
+        mic.noiseTarget = 0;
+        if (immediate) mic.noiseImpact = 0;
+    }
+
+    function refreshVoiceProgress(deltaMs) {
+        let requiredHoldMs = getRequiredVoiceHoldMs();
+        if (mic.level >= physics.voiceVolumeThreshold) {
+            mic.holdProgressMs = Math.min(requiredHoldMs, mic.holdProgressMs + deltaMs);
+        } else {
+            mic.holdProgressMs = Math.max(0, mic.holdProgressMs - deltaMs * 1.5);
+        }
+        mic.normalized = Math.max(0, Math.min(1, mic.holdProgressMs / requiredHoldMs));
+    }
+
+    function buildPromptPool() {
+        if (currentSettings.contentMode === "words") currentPromptPool = [...currentSettings.words];
+        else if (currentSettings.contentMode === "sentences") currentPromptPool = [...currentSettings.sentences];
+        else currentPromptPool = [...currentSettings.words, ...currentSettings.sentences];
+        if (currentPromptPool.length === 0) currentPromptPool = [...defaultWords, ...defaultSentences];
+    }
+
+    function formatDurationLabel(seconds) {
+        return `${Math.max(1, Math.round(seconds / 60))}分钟`;
+    }
+
+    function updateDurationDisplay() {
+        roundDurationChip.innerText = formatDurationLabel(currentSettings.roundDuration);
+    }
+
+    function syncSettingsForm() {
+        wordBankInput.value = currentSettings.words.join("\n");
+        sentenceBankInput.value = currentSettings.sentences.join("\n");
+        contentModeInput.value = currentSettings.contentMode;
+        roundDurationInput.value = String(currentSettings.roundDuration);
+        toggleWeather.checked = currentSettings.weatherEnabled;
+        toggleTestMode.checked = !!currentSettings.testMode;
+        difficultyInput.value = currentSettings.difficulty;
+        micSensitivityInput.value = currentSettings.micSensitivity;
+        noiseSafeZoneInput.value = currentSettings.noiseSafeZone;
+        noiseImpactStrengthInput.value = currentSettings.noiseImpactStrength;
+        noiseResponseSpeedInput.value = currentSettings.noiseResponseSpeed;
+        updateSettingLabels();
+    }
+
+    function updateSettingLabels() {
+        difficultyValue.innerText = `${difficultyInput.value}%`;
+        micSensitivityValue.innerText = `${micSensitivityInput.value}%`;
+        noiseSafeZoneValue.innerText = `${noiseSafeZoneInput.value}%`;
+        noiseImpactStrengthValue.innerText = `${noiseImpactStrengthInput.value}%`;
+        noiseResponseSpeedValue.innerText = `${noiseResponseSpeedInput.value}%`;
+    }
+
+    function getNoiseSafeZoneThreshold() {
+        let baseThreshold = clamp(currentSettings.noiseSafeZone / 100, 0.35, 0.7);
+        if (currentSettings.testMode) {
+            return clamp(baseThreshold - 0.18, 0.18, 0.7);
+        }
+        return baseThreshold;
+    }
+
+    function getNoiseStrengthRatio() {
+        return clamp(currentSettings.noiseImpactStrength / 100, 0.3, 1.4);
+    }
+
+    function getNoiseResponseRatio() {
+        return clamp(currentSettings.noiseResponseSpeed / 100, 0.2, 1);
+    }
+
+    function getNoiseEffectBoost() {
+        return currentSettings.testMode ? 2.4 : 1.15;
+    }
+
+    function getNoiseImpactCap() {
+        return currentSettings.testMode ? 2.6 : 1.4;
+    }
+
+    function smoothToward(current, target, deltaMs, timeMs) {
+        let safeTimeMs = Math.max(1, timeMs);
+        let mix = 1 - Math.exp(-Math.max(0, deltaMs) / safeTimeMs);
+        return current + (target - current) * mix;
+    }
+
+    function hasHookPayload() {
+        return hookIsReady && (gameState === "waiting" || gameState === "loading");
+    }
+
+    function refreshNoiseImpact(deltaMs) {
+        let noiseDetectionActive = !roundEnded && gameState !== "paused" && hasHookPayload();
+        let safeZoneThreshold = getNoiseSafeZoneThreshold();
+        let noiseStrengthRatio = getNoiseStrengthRatio();
+        if (noiseDetectionActive) {
+            let rawExcess = Math.max(0, mic.level - safeZoneThreshold);
+            let excessRatio = clamp(rawExcess / Math.max(0.01, 1 - safeZoneThreshold), 0, 1);
+            mic.noiseTarget = clamp(easeOutCubic(excessRatio) * noiseStrengthRatio * getNoiseEffectBoost(), 0, getNoiseImpactCap());
+        } else {
+            mic.noiseTarget = 0;
+        }
+        let responseRatio = getNoiseResponseRatio();
+        let riseTimeMs = 320 - responseRatio * 220;
+        let fallTimeMs = 620 - responseRatio * 360;
+        let targetTimeMs = mic.noiseTarget > mic.noiseImpact ? riseTimeMs : fallTimeMs;
+        mic.noiseImpact = smoothToward(mic.noiseImpact, mic.noiseTarget, deltaMs, targetTimeMs);
+        if (mic.noiseTarget === 0 && mic.noiseImpact < 0.0025) mic.noiseImpact = 0;
+    }
+
+    function getActiveNoiseImpact() {
+        return !roundEnded && gameState !== "paused" && hasHookPayload() ? mic.noiseImpact : 0;
+    }
+
+    function getVoiceButtonFillRatio() {
+        if (hasHookPayload()) return 1;
+        return clamp(mic.level / Math.max(0.01, physics.voiceVolumeThreshold), 0, 1);
+    }
+
+    function updateVoiceButton() {
+        let percent = Math.max(0, Math.min(100, Math.round(mic.normalized * 100)));
+        let fillPercent = Math.round(getVoiceButtonFillRatio() * 100);
+        let livePercent = Math.max(0, Math.min(100, Math.round(mic.level * 100)));
+        let noisePercent = Math.max(0, Math.min(100, Math.round((getActiveNoiseImpact() / Math.max(0.01, getNoiseImpactCap())) * 100)));
+        btnSimulate.style.setProperty('--voice-fill', `${fillPercent}%`);
+        btnSimulate.classList.remove('success', 'off');
+        btnSimulate.classList.add('listening');
+        if (!mic.active) {
+            btnSimulate.innerText = "麦克风 OFF";
+            btnSimulate.classList.remove('listening');
+            btnSimulate.classList.add('off');
+            return;
+        }
+        if (hasHookPayload()) {
+            btnSimulate.innerText = `环境音 ${livePercent}% | 摆动 ${noisePercent}%`;
+            btnSimulate.classList.remove('listening');
+            btnSimulate.classList.add('success');
+            return;
+        }
+        btnSimulate.innerText = `音量 ${livePercent}% | 进度 ${percent}%`;
+    }
+
+    function applyDifficulty() {
+        let difficultyRatio = currentSettings.difficulty / 100;
+        hook.baseMaxAngle = 0.24 + difficultyRatio * 0.62;
+        hook.baseSpeed = 0.00076 + difficultyRatio * 0.0012;
+        hook.maxAngle = hook.baseMaxAngle;
+        hook.speed = hook.baseSpeed;
+    }
+
+    function getBaseCenterX() {
+        return centerX - blockW / 2;
+    }
+
+    function clamp(value, min, max) {
+        return Math.max(min, Math.min(max, value));
+    }
+
+    function getHookTopInset() {
+        return clamp(canvas.height * hookConfig.topInsetRatio, hookConfig.minTopInset, hookConfig.maxTopInset);
+    }
+
+    function getHookBaseLength() {
+        return clamp(canvas.height * hookConfig.baseLengthRatio, hookConfig.minBaseLength, hookConfig.maxBaseLength);
+    }
+
+    function getHookReadyGap() {
+        return clamp(canvas.height * hookConfig.readyGapRatio, hookConfig.minReadyGap, hookConfig.maxReadyGap);
+    }
+
+    function recenterTowerBase() {
+        if (!blocks.length) return;
+        let deltaX = getBaseCenterX() - blocks[0].x;
+        if (Math.abs(deltaX) < 0.01) return;
+        blocks.forEach(block => { block.x += deltaX; });
+        if (fallingBlock) fallingBlock.x += deltaX;
+        debris.forEach(piece => { piece.x += deltaX; });
+    }
+
+    function initSize() {
+        let panel = document.getElementById('center-panel');
+        canvas.width = panel.clientWidth;
+        canvas.height = panel.clientHeight;
+        centerX = canvas.width / 2;
+        baseY = canvas.height - blockH - 30;
+        hook.x = centerX;
+        hook.topY = -getHookTopInset();
+        hook.baseLength = getHookBaseLength();
+        hook.length = hook.baseLength;
+        hook.targetLength = hook.baseLength;
+        recenterTowerBase();
+        recalculateCamera(true);
+    }
+    window.addEventListener('resize', initSize);
+
+    function getBlockStyle(index) {
+        return {
+            color: blockColors[index % blockColors.length],
+            emoji: blockEmojis[index % blockEmojis.length]
+        };
+    }
+
+    function updateWordDisplay() {
+        if (currentSettings.testMode) {
+            currentPromptText = "";
+            uiWord.innerText = "测试模式";
+            uiWord.style.whiteSpace = "nowrap";
+            uiWord.style.fontSize = "clamp(36px, 4.8vw, 60px)";
+        } else {
+            let word = currentPromptPool[Math.floor(Math.random() * currentPromptPool.length)];
+            currentPromptText = word;
+            uiWord.innerText = word;
+            uiWord.style.whiteSpace = word.indexOf(" ") === -1 ? "nowrap" : "normal";
+            if (word.length > 22) uiWord.style.fontSize = "clamp(22px, 2.7vw, 34px)";
+            else if (word.length > 13) uiWord.style.fontSize = "clamp(30px, 3.7vw, 46px)";
+            else uiWord.style.fontSize = "clamp(46px, 5.7vw, 70px)";
+        }
+        hookIsReady = false;
+        noiseJudgingEnabled = false;
+        resetVoiceAttempt();
+        resetNoiseImpact();
+        lastVoiceMeterAt = Date.now();
+        loadProgress = 0;
+        hook.targetLength = hook.baseLength;
+        btnRelease.disabled = true;
+        btnRelease.classList.remove("active");
+        updateVoiceButton();
+    }
+
+    function updateRoundPromptStatus() {
+        if (currentSettings.testMode) {
+            uiStatus.innerHTML = "测试模式：直接挂楼层";
+            uiStatus.style.color = "#facc15";
+            return;
+        }
+        uiStatus.innerHTML = "请大声朗读";
+        uiStatus.style.color = "#4ade80";
+    }
+
+    function maybeActivateTestHook() {
+        if (!currentSettings.testMode) return;
+        if (gameState !== "waiting" || hookIsReady || roundEnded) return;
+        triggerVoiceSuccess();
+    }
+
+    function formatTime(seconds) {
+        let safe = Math.max(0, Math.ceil(seconds));
+        let m = Math.floor(safe / 60).toString().padStart(2, "0");
+        let s = (safe % 60).toString().padStart(2, "0");
+        return `${m}:${s}`;
+    }
+
+    function updateTimerDisplay() {
+        countdown.innerText = formatTime(roundRemaining);
+        countdown.classList.toggle("warning", roundRemaining <= 10);
+    }
+
+    function startRound() {
+        currentRoundDuration = currentSettings.roundDuration;
+        score = 0;
+        roundRemaining = currentRoundDuration;
+        roundEnded = false;
+        gameState = "waiting";
+        hookIsReady = false;
+        noiseJudgingEnabled = false;
+        loadProgress = 0;
+        loadStartedAt = 0;
+        fallingBlock = null;
+        debris = [];
+        weather = { type: "none", intensity: 0, particles: [], until: 0, direction: 1 };
+        towerLean = 0;
+        towerLeanVelocity = 0;
+        settleEnergy = 0;
+        windForce = 0;
+        windTarget = 0;
+        windPhase = Math.random() * Math.PI * 2;
+        hook.length = hook.baseLength;
+        hook.targetLength = hook.baseLength;
+        resetVoiceAttempt();
+        resetNoiseImpact();
+        lastVoiceMeterAt = Date.now();
+        blocks = [];
+        blocks.push({ x: getBaseCenterX(), y: baseY, targetY: baseY, w: blockW, h: blockH, type: "base" });
+        recalculateCamera(true);
+        uiScore.innerText = score;
+        uiFloor.innerText = 0;
+        uiBest.innerText = bestScore;
+        btnRelease.disabled = true;
+        btnRelease.classList.remove("active");
+        updateTimerDisplay();
+        updateWordDisplay();
+        updateRoundPromptStatus();
+        closeModal(pauseModal);
+        closeModal(resultModal);
+        lastTimerTick = Date.now();
+        updateDurationDisplay();
+        initMicrophone();
+        maybeActivateTestHook();
+    }
+
+    function nextTurn() {
+        if (roundEnded) return;
+        updateWordDisplay();
+        checkWeather(true);
+        gameState = "waiting";
+        updateRoundPromptStatus();
+        maybeActivateTestHook();
+    }
+
+    function getFloorCount() {
+        return Math.max(0, blocks.length - 1);
+    }
+
+    function resetWeather() {
+        weather.type = "none";
+        weather.intensity = 0;
+        weather.particles = [];
+        weather.until = 0;
+        weather.direction = 1;
+        windTarget = 0;
+        uiWeatherIcon.innerText = "晴";
+    }
+
+    function checkWeather(force = false) {
+        if (!currentSettings.weatherEnabled || getFloorCount() < physics.weatherStartFloor) {
+            resetWeather();
+            return;
+        }
+        let now = Date.now();
+        if (!force && now < weather.until) return;
+
+        let highAltitude = getFloorCount() >= 15;
+        let r = Math.random();
+        let weatherHeightBoost = getWeatherHeightBoost();
+        weather.direction = Math.random() < 0.5 ? -1 : 1;
+
+        if (highAltitude) {
+            if (r < 0.5) {
+                weather.type = "wind";
+                weather.intensity = 0.22 + Math.random() * 0.16 + weatherHeightBoost;
+                uiWeatherIcon.innerText = "风";
+            } else if (r < 0.72) {
+                weather.type = "rain";
+                weather.intensity = 0.18 + Math.random() * 0.1 + weatherHeightBoost * 0.85;
+                uiWeatherIcon.innerText = "雨";
+            } else {
+                weather.type = "none";
+                weather.intensity = 0;
+                uiWeatherIcon.innerText = "晴";
+            }
+        } else {
+            if (r < 0.45) {
+                weather.type = "wind";
+                weather.intensity = 0.14 + Math.random() * 0.12 + weatherHeightBoost;
+                uiWeatherIcon.innerText = "风";
+            } else if (r < 0.7) {
+                weather.type = "rain";
+                weather.intensity = 0.12 + Math.random() * 0.1 + weatherHeightBoost * 0.8;
+                uiWeatherIcon.innerText = "雨";
+            } else {
+                weather.type = "none";
+                weather.intensity = 0;
+                uiWeatherIcon.innerText = "晴";
+            }
+        }
+
+        weather.intensity = Math.min(0.9, weather.intensity);
+
+        weather.until = now + physics.weatherMinDurationMs + Math.random() * physics.weatherDurationJitterMs;
+    }
+
+    function easeOutCubic(t) {
+        return 1 - Math.pow(1 - Math.max(0, Math.min(1, t)), 3);
+    }
+
+    function getReadyHookLength(stretchOffset = 0) {
+        if (blocks.length === 0) return hook.baseLength;
+        let topBlock = blocks[blocks.length - 1];
+        let targetEndY = topBlock.y - blockH - getHookReadyGap();
+        let angleCos = Math.max(0.35, Math.cos(hook.angle));
+        let desiredLength = ((targetEndY - hook.topY) / angleCos) * hookConfig.readyLengthScale - stretchOffset;
+        let minReadyLength = Math.max(hookConfig.minReadyLength, hook.baseLength * 0.9);
+        let maxReadyLength = Math.max(hookConfig.maxReadyLength, hook.baseLength + canvas.height * 0.45);
+        return Math.max(minReadyLength, Math.min(maxReadyLength, desiredLength));
+    }
+
+    function getTowerHeightFactor(topIndex = blocks.length - 1) {
+        return Math.max(0.1, Math.min(1.4, Math.max(0, topIndex) / 10));
+    }
+
+    function getLinearHeightDifficulty() {
+        return Math.min(1.5, Math.max(0, getFloorCount() - 1) * physics.heightDifficultyPerFloor);
+    }
+
+    function getWeatherHeightBoost() {
+        return Math.max(0, getFloorCount() - physics.weatherStartFloor) * physics.weatherIntensityPerFloor;
+    }
+
+    function getBlockCenterX(block) {
+        return block.x + block.w / 2;
+    }
+
+    function getTowerMassOffset() {
+        if (blocks.length <= 1) return 0;
+        let baseCenter = getBlockCenterX(blocks[0]);
+        let total = 0;
+        let weight = 0;
+        for (let i = 1; i < blocks.length; i++) {
+            let leverage = 0.9 + i * 0.26;
+            total += (getBlockCenterX(blocks[i]) - baseCenter) * leverage;
+            weight += leverage;
+        }
+        return weight ? total / weight : 0;
+    }
+
+    function getSubstackCenterX(startIndex) {
+        let total = 0;
+        let weight = 0;
+        for (let i = startIndex; i < blocks.length; i++) {
+            let leverage = 1 + (i - startIndex) * physics.stackWeightGrowth;
+            total += getBlockCenterX(blocks[i]) * leverage;
+            weight += leverage;
+        }
+        return weight ? total / weight : getBlockCenterX(blocks[Math.max(0, startIndex - 1)]);
+    }
+
+    function getOverlapRange(lowerBlock, upperBlock) {
+        let left = Math.max(lowerBlock.x, upperBlock.x);
+        let right = Math.min(lowerBlock.x + lowerBlock.w, upperBlock.x + upperBlock.w);
+        return { left, right, width: right - left };
+    }
+
+    function getCurrentStabilityMargin(index) {
+        let floorCount = getFloorCount();
+        let totalLevels = Math.max(1, blocks.length - 1);
+        let interfaceProgress = Math.max(0, index - 1) / totalLevels;
+        let weatherMargin = weather.type === "rain" ? physics.rainStabilityMarginPx : physics.stabilityMarginPx;
+        let heightMargin = Math.max(0, floorCount - 2) * physics.heightMarginStepPx;
+        return weatherMargin + heightMargin + interfaceProgress * physics.localHeightBiasPx;
+    }
+
+    function getCurrentPerfectWindow() {
+        let weatherPenalty = weather.type === "rain" ? physics.rainPerfectPenaltyPx : 0;
+        let heightPenalty = Math.max(0, getFloorCount() - 3) * physics.perfectHeightPenaltyPx;
+        return Math.max(5, physics.perfectWindowPx - weatherPenalty - heightPenalty);
+    }
+
+    function getVisualLeanRatio() {
+        return physics.maxLean ? towerLean / physics.maxLean : 0;
+    }
+
+    function getSwayOffset(index) {
+        let topIndex = blocks.length - 1;
+        if (index <= 0 || topIndex <= 0) return 0;
+        let progress = index / topIndex;
+        let bend = Math.pow(progress, 1.35);
+        let maxOffset = blockW * physics.maxTopOffsetRatio;
+        let inertialOffset = towerLeanVelocity * blockW * 110 * bend;
+        let leanOffset = getVisualLeanRatio() * maxOffset * bend;
+        return Math.max(-maxOffset, Math.min(maxOffset, leanOffset + inertialOffset));
+    }
+
+    function getBlockRotation(index) {
+        let topIndex = blocks.length - 1;
+        if (index <= 0 || topIndex <= 0) return 0;
+        let progress = index / topIndex;
+        let rotation = towerLean * (0.2 + progress * 0.75) + towerLeanVelocity * 4.5 * progress;
+        return Math.max(-physics.maxBlockRotation, Math.min(physics.maxBlockRotation, rotation));
+    }
+
+    function findUnstableLevel() {
+        for (let i = 1; i < blocks.length; i++) {
+            let margin = getCurrentStabilityMargin(i);
+            let overlap = getOverlapRange(blocks[i - 1], blocks[i]);
+            if (overlap.width <= 0) return i;
+            let substackCenterX = getSubstackCenterX(i);
+            let supportedLeft = overlap.left + margin;
+            let supportedRight = overlap.right - margin;
+            if (supportedLeft > supportedRight) return i;
+            if (substackCenterX < supportedLeft || substackCenterX > supportedRight) return i;
+        }
+        return -1;
+    }
+
+    function addDebrisFromBlock(block, index, direction = 0) {
+        let releaseDirection = direction || Math.sign(towerLean) || Math.sign(windForce) || (Math.random() < 0.5 ? -1 : 1);
+        debris.push({
+            ...block,
+            x: block.x + getSwayOffset(index),
+            y: block.y,
+            vx: releaseDirection * (3 + Math.random() * 4) + windForce * 6,
+            vy: -2 - Math.random() * 4,
+            angle: getBlockRotation(index),
+            rotV: releaseDirection * (0.05 + Math.random() * 0.08)
+        });
+    }
+
+    function collapseFromLevel(startIndex, direction = 0) {
+        if (startIndex <= 0 || startIndex >= blocks.length) return false;
+        let removed = blocks.slice(startIndex);
+        removed.forEach((block, offsetIndex) => addDebrisFromBlock(block, startIndex + offsetIndex, direction));
+        blocks.splice(startIndex);
+        settleEnergy += (direction || Math.sign(towerLean) || 1) * 0.0016 * removed.length;
+        shakeIntensity = Math.min(20, 8 + removed.length * 3);
+        playImpact(1, false, true);
+        showFeedback("UNSTABLE!", "#ef4444");
+        recalculateCamera();
+        uiFloor.innerText = getFloorCount();
+        return true;
+    }
+
+    function recalculateCamera(snap = false) {
+        recenterTowerBase();
+        let topIndex = blocks.length - 1;
+        let shiftOffset = Math.max(0, topIndex - cameraConfig.maxVisibleFloors + 1) * blockH;
+        blocks.forEach((b, i) => {
+            b.targetY = baseY - i * blockH + shiftOffset;
+            if (snap) b.y = b.targetY;
+        });
+    }
+
+    function showFeedback(text, color) {
+        const msg = document.getElementById('feedback-msg');
+        msg.innerText = text;
+        msg.style.color = color;
+        msg.style.opacity = 1;
+        msg.style.top = '40%';
+        setTimeout(() => { msg.style.opacity = 0; msg.style.top = '35%'; }, 1000);
+    }
+
+    async function initMicrophone() {
+        if (mic.active || !navigator.mediaDevices?.getUserMedia) return;
+        try {
+            let stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            mic.ctx = new (window.AudioContext || window.webkitAudioContext)();
+            let source = mic.ctx.createMediaStreamSource(stream);
+            mic.analyser = mic.ctx.createAnalyser();
+            mic.analyser.fftSize = 512;
+            mic.data = new Uint8Array(mic.analyser.frequencyBinCount);
+            source.connect(mic.analyser);
+            mic.active = true;
+            updateVoiceButton();
+        } catch {
+            mic.active = false;
+            volumeValue.innerText = "OFF";
+            updateVoiceButton();
+        }
+    }
+
+    function updateVolumeMeter() {
+        let now = Date.now();
+        let deltaMs = Math.max(0, Math.min(120, now - lastVoiceMeterAt));
+        lastVoiceMeterAt = now;
+        let raw = 0;
+        if (mic.active && mic.analyser) {
+            mic.analyser.getByteFrequencyData(mic.data);
+            let sum = 0;
+            for (let i = 0; i < mic.data.length; i++) sum += mic.data[i];
+            raw = sum / mic.data.length / 255;
+        } else {
+            raw = 0;
+        }
+        let sensitivity = currentSettings.micSensitivity / 70;
+        mic.level = mic.level * 0.72 + Math.min(1, raw * sensitivity) * 0.28;
+        if (!roundEnded && (gameState === "waiting" || gameState === "loading")) {
+            refreshVoiceProgress(deltaMs);
+        } else if (gameState !== "paused") {
+            mic.normalized = 0;
+        }
+        refreshNoiseImpact(deltaMs);
+        let percent = Math.round(mic.level * 100);
+        volumeFill.style.width = `${percent}%`;
+        volumeValue.innerText = `${percent}%`;
+        updateVoiceButton();
+        let activeNoiseImpact = getActiveNoiseImpact();
+        if (activeNoiseImpact > 0 && blocks.length > 1) {
+            let settleBoost = currentSettings.testMode ? 2.2 : 1;
+            settleEnergy += activeNoiseImpact * physics.noiseSettleBoost * settleBoost * (0.28 + getTowerHeightFactor() * 0.42);
+        }
+    }
+
+    function initAudio() {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === "suspended") audioCtx.resume();
+    }
+
+    function playImpact(offsetRatio, landed = true, collapse = false) {
+        try {
+            initAudio();
+            let now = audioCtx.currentTime;
+            let osc = audioCtx.createOscillator();
+            let gain = audioCtx.createGain();
+            let freq = collapse ? 90 : landed ? 170 + Math.max(0, 1 - offsetRatio) * 90 : 110;
+            osc.type = collapse ? "sawtooth" : "triangle";
+            osc.frequency.setValueAtTime(freq, now);
+            osc.frequency.exponentialRampToValueAtTime(Math.max(55, freq * 0.45), now + 0.18);
+            gain.gain.setValueAtTime(0.0001, now);
+            gain.gain.exponentialRampToValueAtTime(collapse ? 0.26 : 0.16, now + 0.012);
+            gain.gain.exponentialRampToValueAtTime(0.0001, now + (collapse ? 0.38 : 0.18));
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start(now);
+            osc.stop(now + (collapse ? 0.4 : 0.2));
+        } catch {}
+    }
+
+    function triggerVoiceSuccess() {
+        if (gameState !== "waiting" || hookIsReady || roundEnded) return;
+        uiStatus.innerHTML = "发音成功";
+        uiStatus.style.color = "#4ade80";
+        noiseJudgingEnabled = true;
+        hook.targetLength = getReadyHookLength(0);
+        hookIsReady = true;
+        loadProgress = 0;
+        loadStartedAt = Date.now();
+        gameState = "loading";
+        btnRelease.disabled = true;
+        btnRelease.classList.remove('active');
+        updateVoiceButton();
+    }
+
+    function pauseGame() {
+        if (roundEnded || gameState === "paused") return;
+        previousState = gameState;
+        gameState = "paused";
+        openModal(pauseModal);
+    }
+
+    function resumeGame() {
+        if (roundEnded) return;
+        gameState = previousState || "waiting";
+        lastTimerTick = Date.now();
+        closeModal(pauseModal);
+    }
+
+    function endRound() {
+        if (roundEnded) return;
+        roundEnded = true;
+        gameState = "ended";
+        hookIsReady = false;
+        noiseJudgingEnabled = false;
+        resetNoiseImpact();
+        loadProgress = 0;
+        loadStartedAt = 0;
+        btnRelease.disabled = true;
+        btnRelease.classList.remove("active");
+        bestScore = Math.max(bestScore, score);
+        localStorage.setItem("classroomSkyscraperBest", String(bestScore));
+        uiBest.innerText = bestScore;
+        document.getElementById("result-floor").innerText = Math.max(0, blocks.length - 1);
+        document.getElementById("result-score").innerText = score;
+        document.getElementById("result-duration").innerText = formatDurationLabel(currentRoundDuration);
+        openModal(resultModal);
+    }
+
+    function openModal(modal) { modal.classList.add("visible"); }
+    function closeModal(modal) { modal.classList.remove("visible"); }
+
+    btnSimulate.addEventListener('click', () => {
+        initAudio();
+        initMicrophone();
+    });
+    document.addEventListener('pointerdown', () => { initAudio(); initMicrophone(); }, { passive: true });
+    document.addEventListener('keydown', () => { initAudio(); initMicrophone(); }, { passive: true });
+
+    btnRelease.addEventListener('click', () => {
+        initAudio();
+        if (!hookIsReady || gameState !== "waiting" || roundEnded) return;
+        let dropX = hook.x + Math.sin(hook.angle) * hook.length;
+        let dropY = hook.topY + Math.cos(hook.angle) * hook.length;
+        fallingBlock = { x: dropX - blockW/2, y: dropY, vx: 0, vy: 0, w: blockW, h: blockH, ...getBlockStyle(blocks.length) };
+        gameState = "dropping";
+        hookIsReady = false;
+        noiseJudgingEnabled = false;
+        loadProgress = 0;
+        loadStartedAt = 0;
+        hook.targetLength = hook.baseLength;
+        btnRelease.disabled = true;
+        btnRelease.classList.remove('active');
+        uiStatus.innerHTML = "下落中...";
+        uiStatus.style.color = "#94a3b8";
+    });
+
+    document.getElementById("btn-settings").addEventListener("click", () => {
+        syncSettingsForm();
+        openModal(settingsModal);
+    });
+    document.getElementById("btn-close-settings").addEventListener("click", () => closeModal(settingsModal));
+    document.getElementById("btn-save-settings").addEventListener("click", () => {
+        currentSettings.words = sanitizeList(parseBank(wordBankInput.value), defaultWords);
+        currentSettings.sentences = sanitizeList(parseBank(sentenceBankInput.value), defaultSentences);
+        currentSettings.contentMode = contentModeInput.value;
+        currentSettings.roundDuration = Number(roundDurationInput.value);
+        currentSettings.weatherEnabled = toggleWeather.checked;
+        currentSettings.testMode = toggleTestMode.checked;
+        currentSettings.difficulty = Number(difficultyInput.value);
+        currentSettings.micSensitivity = Number(micSensitivityInput.value);
+        currentSettings.noiseSafeZone = Number(noiseSafeZoneInput.value);
+        currentSettings.noiseImpactStrength = Number(noiseImpactStrengthInput.value);
+        currentSettings.noiseResponseSpeed = Number(noiseResponseSpeedInput.value);
+        saveSettings();
+        buildPromptPool();
+        applyDifficulty();
+        updateDurationDisplay();
+        updateWordDisplay();
+        updateRoundPromptStatus();
+        maybeActivateTestHook();
+        closeModal(settingsModal);
+    });
+    document.getElementById("btn-reset-bank").addEventListener("click", () => {
+        wordBankInput.value = defaultWords.join("\n");
+        sentenceBankInput.value = defaultSentences.join("\n");
+    });
+    difficultyInput.addEventListener("input", updateSettingLabels);
+    micSensitivityInput.addEventListener("input", updateSettingLabels);
+    noiseSafeZoneInput.addEventListener("input", updateSettingLabels);
+    noiseImpactStrengthInput.addEventListener("input", updateSettingLabels);
+    noiseResponseSpeedInput.addEventListener("input", updateSettingLabels);
+    document.getElementById("btn-pause").addEventListener("click", pauseGame);
+    document.getElementById("btn-resume").addEventListener("click", resumeGame);
+    document.getElementById("btn-restart").addEventListener("click", () => startRound());
+    document.getElementById("btn-result-restart").addEventListener("click", () => startRound());
+
+    function update() {
+        let now = Date.now();
+        updateVolumeMeter();
+        if (currentSettings.testMode) {
+            maybeActivateTestHook();
+        } else if (mic.active && gameState === "waiting" && !hookIsReady && !roundEnded && mic.normalized >= 1) {
+            triggerVoiceSuccess();
+        }
+        if (!roundEnded && gameState !== "paused") {
+            let elapsed = (now - lastTimerTick) / 1000;
+            roundRemaining -= elapsed;
+            lastTimerTick = now;
+            if (roundRemaining <= 0) {
+                roundRemaining = 0;
+                updateTimerDisplay();
+                endRound();
+            } else {
+                updateTimerDisplay();
+            }
+        } else {
+            lastTimerTick = now;
+        }
+        if (gameState === "paused" || gameState === "ended") return;
+
+        checkWeather();
+        let topIndex = blocks.length - 1;
+        let towerHeightFactor = getTowerHeightFactor(topIndex);
+        let heightDifficulty = getLinearHeightDifficulty();
+        windPhase += 0.01 * (0.6 + towerHeightFactor * 0.4);
+        if (weather.type === "wind") {
+            let gust = 0.78 + Math.sin(windPhase) * 0.22;
+            windTarget = weather.direction * weather.intensity * gust * (1 + heightDifficulty * 0.9);
+        } else {
+            windTarget = 0;
+        }
+        windForce += (windTarget - windForce) * physics.windResponse;
+
+        let massOffset = getTowerMassOffset();
+        let leanBoost = physics.highRiseLeanBoost * towerHeightFactor;
+        let activeNoiseImpact = getActiveNoiseImpact();
+        let noiseLeanWave = hasHookPayload()
+            ? Math.sin(now * (0.008 + activeNoiseImpact * 0.01)) * activeNoiseImpact * (currentSettings.testMode ? 0.03 : 0.012)
+            : 0;
+        let targetLean = Math.max(
+            -physics.maxLean * 0.8,
+            Math.min(
+                physics.maxLean * 0.8,
+                (massOffset / blockW) * (0.052 + leanBoost + heightDifficulty * 0.035)
+                + windForce * (0.09 + towerHeightFactor * physics.highRiseWindBoost + heightDifficulty * 0.05)
+                + noiseLeanWave
+            )
+        );
+        towerLeanVelocity += (targetLean - towerLean) * physics.recenterStrength;
+        towerLeanVelocity += settleEnergy;
+        towerLeanVelocity *= Math.max(0.82, physics.baseDamping - towerHeightFactor * 0.028 - heightDifficulty * 0.018);
+        towerLean += towerLeanVelocity;
+        settleEnergy *= physics.settleDecay;
+        if (Math.abs(towerLean) > physics.maxLean) {
+            towerLean = Math.sign(towerLean) * physics.maxLean;
+            towerLeanVelocity *= 0.65;
+        }
+
+        let dynamicHookAngle = hook.baseMaxAngle + heightDifficulty * physics.hookHeightAngleStep + activeNoiseImpact * physics.noiseSwingBoost;
+        let dynamicHookSpeed = hook.baseSpeed + heightDifficulty * physics.hookHeightSpeedStep + activeNoiseImpact * physics.noiseSpeedBoost;
+        hook.maxAngle = Math.min(0.9, dynamicHookAngle);
+        hook.speed = Math.min(0.003, dynamicHookSpeed);
+
+        let weatherHookOffset = windForce * (0.16 + towerHeightFactor * 0.05 + heightDifficulty * 0.08);
+        hook.angle = Math.sin(now * hook.speed) * hook.maxAngle + weatherHookOffset;
+        let stretchRatio = 1 - Math.abs(Math.sin(now * hook.speed));
+        let activeStretchScale = hookIsReady ? hookConfig.readyStretchScale : 1;
+        let stretchOffset = stretchRatio * hook.maxStretch * activeStretchScale;
+        hook.targetLength = hookIsReady ? getReadyHookLength(stretchOffset) : hook.baseLength;
+        let targetHookLength = gameState === "loading" ? hook.targetLength : hook.targetLength + stretchOffset;
+        let followFactor = gameState === "loading" ? 0.045 : 0.1;
+        hook.length += (targetHookLength - hook.length) * followFactor;
+        if (gameState === "loading") {
+            let loadElapsed = now - loadStartedAt;
+            loadProgress = Math.min(1, easeOutCubic(loadElapsed / 1250));
+            if (loadProgress >= 0.999 && loadElapsed > 1200 && Math.abs(hook.length - targetHookLength) < 9) {
+                gameState = "waiting";
+                uiStatus.innerHTML = "准备松开";
+                btnRelease.disabled = false;
+                btnRelease.classList.add('active');
+            }
+        }
+
+        if (weather.type === "wind" && Math.random() < 0.08 + towerHeightFactor * 0.08) {
+            weather.particles.push({
+                x: -80,
+                y: Math.random() * canvas.height,
+                vx: (12 + towerHeightFactor * 8 + heightDifficulty * 8) * Math.max(0.25, Math.abs(windForce)) + Math.random() * 4,
+                vy: (Math.random() - 0.5) * (0.5 + towerHeightFactor * 0.5),
+                len: 60 + Math.random() * 60,
+                width: 1.6 + Math.random() * 1.8
+            });
+        } else if (weather.type === "rain" && Math.random() < 0.22 + towerHeightFactor * 0.12) {
+            weather.particles.push({
+                x: Math.random() * canvas.width,
+                y: -60,
+                vx: 2 + Math.abs(windForce) * (6 + heightDifficulty * 3),
+                vy: (16 + towerHeightFactor * 7 + heightDifficulty * 7) * Math.max(0.12, weather.intensity) + Math.random() * 7,
+                len: 20 + Math.random() * 14,
+                width: 1.4 + Math.random() * 1.2
+            });
+        }
+
+        for (let i = debris.length - 1; i >= 0; i--) {
+            let d = debris[i];
+            d.vy += 0.6;
+            d.vx *= 0.995;
+            d.x += d.vx;
+            d.y += d.vy;
+            d.angle += d.rotV;
+            if (d.y > canvas.height + 100) debris.splice(i, 1);
+        }
+        for (let i = weather.particles.length - 1; i >= 0; i--) {
+            let p = weather.particles[i];
+            p.x += p.vx;
+            p.y += p.vy;
+            if (p.x > canvas.width + 100 || p.y > canvas.height + 100) weather.particles.splice(i, 1);
+        }
+
+        blocks.forEach(b => { if (Math.abs(b.targetY - b.y) > 0.5) b.y += (b.targetY - b.y) * 0.15; });
+
+        if (gameState === "dropping" && fallingBlock) {
+            if (weather.type === "wind") {
+                fallingBlock.vx += windForce * (0.1 + heightDifficulty * 0.05);
+                fallingBlock.vx *= 0.98;
+            }
+            fallingBlock.vy += 0.8;
+            fallingBlock.x += fallingBlock.vx;
+            fallingBlock.y += fallingBlock.vy;
+            let topBlock = blocks[topIndex];
+            let topVisualX = topBlock.x + getSwayOffset(topIndex);
+
+            if (fallingBlock.y + fallingBlock.h >= topBlock.y) {
+                fallingBlock.y = topBlock.y - fallingBlock.h;
+                let visualOffset = fallingBlock.x - topVisualX;
+                let landedBlock = {
+                    ...fallingBlock,
+                    x: topBlock.x + visualOffset,
+                    y: topBlock.y - fallingBlock.h,
+                    targetY: topBlock.y - fallingBlock.h,
+                    vx: 0,
+                    vy: 0
+                };
+                let overlap = getOverlapRange(topBlock, landedBlock);
+                let centerError = Math.abs(getBlockCenterX(landedBlock) - getBlockCenterX(topBlock));
+                let offsetRatio = Math.min(1, centerError / blockW);
+
+                if (overlap.width <= 0) {
+                    addDebrisFromBlock(
+                        { ...fallingBlock, x: fallingBlock.x, y: fallingBlock.y },
+                        topIndex + 1,
+                        Math.sign(visualOffset) || Math.sign(windForce) || 1
+                    );
+                    shakeIntensity = 8;
+                    playImpact(offsetRatio, false, false);
+                    showFeedback("MISS!", "#fca5a5");
+                } else {
+                    blocks.push(landedBlock);
+                    let unstableLevel = findUnstableLevel();
+                    if (unstableLevel !== -1) {
+                        collapseFromLevel(unstableLevel, Math.sign(visualOffset) || Math.sign(windForce) || 1);
+                    } else {
+                        let perfectWindow = getCurrentPerfectWindow();
+                        let impactDirection = (getBlockCenterX(landedBlock) - getBlockCenterX(topBlock)) / blockW;
+                        if (centerError <= perfectWindow) {
+                            blocks[blocks.length - 1].x = topBlock.x;
+                            score += 100;
+                            shakeIntensity = 4;
+                            showFeedback("PERFECT!", "#fef08a");
+                            settleEnergy += impactDirection * 0.0006;
+                        } else {
+                            score += 50;
+                            shakeIntensity = 6 + Math.min(8, offsetRatio * 10);
+                            showFeedback("GOOD!", "#86efac");
+                            settleEnergy += impactDirection * (0.0014 + offsetRatio * 0.0018);
+                        }
+                        playImpact(offsetRatio, true, false);
+                        recalculateCamera();
+                    }
+                }
+
+                uiScore.innerText = score;
+                uiFloor.innerText = getFloorCount();
+                fallingBlock = null;
+                setTimeout(nextTurn, 800);
+            }
+        }
+    }
+
+    function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        if(weather.type === "rain") {
+            ctx.fillStyle = 'rgba(15, 23, 42, 0.42)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+
+        ctx.save();
+        if (shakeIntensity > 0.5) {
+            ctx.translate((Math.random() - 0.5) * shakeIntensity, (Math.random() - 0.5) * shakeIntensity);
+            shakeIntensity *= 0.85;
+        }
+
+        let endX = hook.x + Math.sin(hook.angle) * hook.length;
+        let endY = hook.topY + Math.cos(hook.angle) * hook.length;
+        ctx.beginPath(); ctx.moveTo(hook.x, hook.topY); ctx.lineTo(endX, endY);
+        ctx.lineWidth = 5; ctx.strokeStyle = "#1e293b"; ctx.stroke();
+        ctx.beginPath(); ctx.arc(endX, endY, 10, 0, Math.PI*2); ctx.fillStyle = "#0f172a"; ctx.fill();
+
+        if (hookIsReady && (gameState === "waiting" || gameState === "loading")) {
+            let style = getBlockStyle(blocks.length);
+            let easedLoad = 1 - Math.pow(1 - Math.min(1, loadProgress), 3);
+            let scale = gameState === "loading" ? 0.82 + easedLoad * 0.18 : 1;
+            let alpha = gameState === "loading" ? 0.38 + easedLoad * 0.62 : 1;
+            ctx.save();
+            ctx.globalAlpha = alpha;
+            ctx.translate(endX, endY + blockH/2);
+            ctx.scale(scale, scale);
+            drawBlock(-blockW/2, -blockH/2, blockW, blockH, false, style);
+            ctx.restore();
+        }
+        if (fallingBlock) drawBlock(fallingBlock.x, fallingBlock.y, fallingBlock.w, fallingBlock.h, false, fallingBlock);
+        blocks.forEach((b, index) => drawBlock(b.x + getSwayOffset(index), b.y, b.w, b.h, index === 0, b, getBlockRotation(index)));
+        debris.forEach(d => {
+            ctx.save(); ctx.translate(d.x + d.w/2, d.y + d.h/2); ctx.rotate(d.angle);
+            drawBlock(-d.w/2, -d.h/2, d.w, d.h, false, d); ctx.restore();
+        });
+        ctx.restore();
+
+        if(weather.particles.length > 0) {
+            ctx.strokeStyle = weather.type === "wind" ? 'rgba(255,255,255,0.42)' : 'rgba(147,197,253,0.72)';
+            weather.particles.forEach(p => {
+                ctx.lineWidth = p.width || 2;
+                ctx.beginPath(); ctx.moveTo(p.x, p.y);
+                ctx.lineTo(p.x - p.vx*(p.len/20), p.y - p.vy*(p.len/20)); ctx.stroke();
+            });
+        }
+    }
+
+    function paintBlockBody(x, y, w, h, isBase, style = {}) {
+        ctx.fillStyle = isBase ? "#475569" : (style.color || "#eab308");
+        ctx.fillRect(x, y, w, h);
+        ctx.lineWidth = 4; ctx.strokeStyle = "#0f172a"; ctx.strokeRect(x, y, w, h);
+        ctx.fillStyle = "rgba(255, 255, 255, 0.1)"; ctx.fillRect(x + 5, y + 5, w - 10, 15);
+        if (!isBase) {
+            ctx.font = "40px Arial"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+            ctx.save();
+            ctx.shadowColor = "rgba(0, 0, 0, 0.8)";
+            ctx.shadowBlur = 2;
+            ctx.lineWidth = 5;
+            ctx.strokeStyle = "rgba(15, 23, 42, 0.75)";
+            ctx.strokeText(style.emoji || "😀", x + w/2, y + h/2 + 5);
+            ctx.restore();
+            ctx.fillText(style.emoji || "😀", x + w/2, y + h/2 + 5);
+        } else {
+            ctx.font = "bold 24px Arial"; ctx.fillStyle = "#cbd5e1"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+            ctx.fillText("BASE", x + w/2, y + h/2);
+        }
+    }
+
+    function drawBlock(x, y, w, h, isBase, style = {}, rotation = 0) {
+        if (Math.abs(rotation) < 0.0005) {
+            paintBlockBody(x, y, w, h, isBase, style);
+            return;
+        }
+        ctx.save();
+        ctx.translate(x + w / 2, y + h);
+        ctx.rotate(rotation);
+        paintBlockBody(-w / 2, -h, w, h, isBase, style);
+        ctx.restore();
+    }
+
+    function loop() {
+        update();
+        draw();
+        requestAnimationFrame(loop);
+    }
+
+    buildPromptPool();
+    applyDifficulty();
+    syncSettingsForm();
+    initSize();
+    updateDurationDisplay();
+    startRound();
+    loop();
+</script>
+</body>
+</html>
